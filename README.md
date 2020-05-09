@@ -5,7 +5,7 @@ JWT - BCTRPY Node.js
 
 ## Request / Response
 
-Register an user successfully
+Register a user successfully
 
 ```bash
 curl --location --request POST 'http://localhost:3000/user/register' \
