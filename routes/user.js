@@ -2,8 +2,14 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
+const redis = require('redis');
 const saltRounds = 10;
 const User = require('../models/User');
+
+const REDIS_PORT = process.env.REDIS_PORT || 7000;
+
+const client = redis.createClient(REDIS_PORT);
 
 router.use(function timeLog (req, res, next) {
   // middleware 
@@ -76,7 +82,7 @@ router.get('/profil', verifyToken, (req, res) => {
   jwt.verify(req.token, require('../config/default').JWT_SECRET, (err, userData) => {
     
     if(err){
-      res.sendStatus(403);
+      res.sendStatus(401);
     }else{
       res.json({
         userData,
@@ -86,8 +92,34 @@ router.get('/profil', verifyToken, (req, res) => {
 
   });
 
+});
+
+router.get('/ipInfo', cache, (req, res) => {
+
+  const { ipAddress } = req.query;
+  let url = `https://iplist.cc/api/${ipAddress}`;
+
+  axios.get(url)
+  .then(function (response) {
+
+    if(response.status == 200){
+      //key, minute, payload data
+      let dd = JSON.stringify(response.data);
+      client.setex(ipAddress, 60, dd);
+      return res.json(response.data);
+    }
+    res.send('Fail');
+
+  })
+  .catch(function (error) {
+    return res.json({
+      err: error
+    });
+  })
 
 });
+
+
 
 function verifyToken(req, res, next){
   const bearerHeader =  req.headers['x-access-token'] || req.headers['authorization'];
@@ -99,7 +131,22 @@ function verifyToken(req, res, next){
   }else {
     res.sendStatus(403).json('Access denied');
   }
+}
 
+function cache(req, res, next) {
+  const { ipAddress } = req.query;
+
+  client.get(ipAddress, (err, data) => {
+    if (err) throw err;
+
+    if (data !== null) {
+      console.log('redis cache');
+      res.json(JSON.parse(data));
+    } else {
+      next();
+    }
+
+  });
 }
 
 module.exports = router;
