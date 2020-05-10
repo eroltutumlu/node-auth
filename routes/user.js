@@ -103,7 +103,7 @@ router.get('/ipInfo', cache, (req, res) => {
   .then(function (response) {
 
     if(response.status == 200){
-      //key, minute, payload data
+      //key, second, payload data
       let dd = JSON.stringify(response.data);
       client.setex(ipAddress, 60, dd);
       return res.json(response.data);
